@@ -5,6 +5,7 @@ use warnings;
 
 use lib qw(lib ../lib);
 use POE qw/Component::WWW::HTMLTagAttributeCounter/;
+
 my $poco = POE::Component::WWW::HTMLTagAttributeCounter->spawn;
 
 POE::Session->create( package_states => [ main => [qw(_start results)] ], );

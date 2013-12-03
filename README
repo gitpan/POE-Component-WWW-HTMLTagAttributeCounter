@@ -1,43 +1,306 @@
-POE-Component-WWW-HTMLTagAttributeCounter
+NAME
+    POE::Component::WWW::HTMLTagAttributeCounter - non-blocking wrapper
+    around WWW::HTMLTagAttributeCounter
 
-The module is a non-blocking wrapper around L<WWW::HTMLTagAttributeCounter>
-that provides interface to count HTML tags and attributes in given web page or HTML code
+SYNOPSIS
+        use strict;
+        use warnings;
 
-INSTALLATION
+        use POE qw/Component::WWW::HTMLTagAttributeCounter/;
+        my $poco = POE::Component::WWW::HTMLTagAttributeCounter->spawn;
 
-To install this module, run the following commands:
+        POE::Session->create( package_states => [ main => [qw(_start results)] ], );
 
-	perl Build.PL
-	./Build
-	./Build test
-	./Build install
+        $poe_kernel->run;
 
-SUPPORT AND DOCUMENTATION
+        sub _start {
+            $poco->count( {
+                    event => 'results',
+                    where  => 'http://zoffix.com/',
+                    what   => [ qw/div a span/ ],
+                }
+            );
+        }
 
-After installing, you can find documentation for this module with the
-perldoc command.
+        sub results {
+            my $in_ref = $_[ARG0];
+            if ( $in_ref->{error} ) {
+                print "Error: $in_ref->{error}\n";
+            }
+            else {
+                print "I counted $in_ref->{result_readable} tags on $in_ref->{where}\n";
+            }
 
-    perldoc POE::Component::WWW::HTMLTagAttributeCounter
+            $poco->shutdown;
+        }
 
-You can also look for information at:
+    Using event based interface is also possible of course.
 
-    RT, CPAN's request tracker
-        http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Component-WWW-HTMLTagAttributeCounter
+DESCRIPTION
+    The module is a non-blocking wrapper around WWW::HTMLTagAttributeCounter
+    that provides interface to count HTML tags and attributes in given web
+    page or HTML code
 
-    AnnoCPAN, Annotated CPAN documentation
-        http://annocpan.org/dist/POE-Component-WWW-HTMLTagAttributeCounter
+CONSTRUCTOR
+  "spawn"
+        my $poco = POE::Component::WWW::HTMLTagAttributeCounter->spawn;
 
-    CPAN Ratings
-        http://cpanratings.perl.org/d/POE-Component-WWW-HTMLTagAttributeCounter
+        POE::Component::WWW::HTMLTagAttributeCounter->spawn(
+            alias => 'counter',
+            ua => LWP::UserAgent->new( timeout => 10 ),
+            options => {
+                debug => 1,
+                trace => 1,
+                # POE::Session arguments for the component
+            },
+            debug => 1, # output some debug info
+        );
 
-    Search CPAN
-        http://search.cpan.org/dist/POE-Component-WWW-HTMLTagAttributeCounter
+    The "spawn" method returns a
+    POE::Component::WWW::HTMLTagAttributeCounter object. It takes a few
+    arguments, *all of which are optional*. The possible arguments are as
+    follows:
 
+   "alias"
+        ->spawn( alias => 'counter' );
 
-COPYRIGHT AND LICENCE
+    Optional. Specifies a POE Kernel alias for the component. By default no
+    aliases are set.
 
-Copyright (C) 2008 'Zoffix
+   "ua"
+        ->spawn( ua => LWP::UserAgent->new( timeout => 10 ) );
 
-This program is free software; you can redistribute it and/or modify it
-under the same terms as Perl itself.
+    Optional. When specified, will be given to WWW::HTMLTagAttributeCounter
+    constructor's "ua" argument. Defaults to: default
+    WWW::HTMLTagAttributeCounter "ua" argument.
+
+   "options"
+        ->spawn(
+            options => {
+                trace => 1,
+                default => 1,
+            },
+        );
+
+    Optional. A hashref of POE Session options to pass to the component's
+    session.
+
+   "debug"
+        ->spawn(
+            debug => 1
+        );
+
+    When set to a true value turns on output of debug messages. Defaults to:
+    0.
+
+METHODS
+  "count"
+        $poco->count( {
+                event       => 'event_for_output',
+                where       => 'http://zoffix.com/',
+                what        => [ qw/div span a/ ],
+                type        => 'tag',
+                _blah       => 'pooh!',
+                session     => 'other',
+            }
+        );
+
+    Takes a hashref as an argument, does not return a sensible return value.
+    See "count" event's description for more information.
+
+  "session_id"
+        my $poco_id = $poco->session_id;
+
+    Takes no arguments. Returns component's session ID.
+
+  "shutdown"
+        $poco->shutdown;
+
+    Takes no arguments. Shuts down the component.
+
+ACCEPTED EVENTS
+  "count"
+        $poe_kernel->post( counter => count => {
+                event       => 'event_for_output',
+                where       => 'http://zoffix.com/',
+                what        => [ qw/div span a/ ],
+                type        => 'tag',
+                _blah       => 'pooh!',
+                session     => 'other',
+            }
+        );
+
+    Instructs the component to count tags or attributes on the given page
+    (referenced by a URI) or direct HTML code given as a scalarref. Takes a
+    hashref as an argument, the possible keys/value of that hashref are as
+    follows:
+
+   "event"
+        { event => 'results_event', }
+
+    Mandatory. Specifies the name of the event to emit when results are
+    ready. See OUTPUT section for more information.
+
+   "where"
+        { where => 'http://zoffix.com/', }
+
+        { where => \ $html_code, }
+
+    Mandatory. Takes either a string that must be a URI to the page with
+    HTML code or a scalarref that references actual HTML code. This code
+    will be used for counting.
+
+   "what"
+        { what => [ qw/div span a/ ], }
+
+        { what => 'div', }
+
+    Mandatory. Takes either an arrayref or a scalar. Specifying a scalar is
+    the same as specifying an arrayref with just that scalar in it. The
+    "what" argument specifies the names of HTML tags or attributes that you
+    want to count.
+
+   "tag".
+        { type => 'tag', }
+
+        { type => 'attr', }
+
+    Optional. Takes two valid strings: "tag" or "attr". Specifies what you
+    wish to count: tags or attributes. Defaults to: "tag"
+
+   "session"
+        { session => 'other' }
+
+        { session => $other_session_reference }
+
+        { session => $other_session_ID }
+
+    Optional. Takes either an alias, reference or an ID of an alternative
+    session to send output to.
+
+   user defined
+        {
+            _user    => 'random',
+            _another => 'more',
+        }
+
+    Optional. Any keys starting with "_" (underscore) will not affect the
+    component and will be passed back in the result intact.
+
+  "shutdown"
+        $poe_kernel->post( counter => 'shutdown' );
+
+    Takes no arguments. Tells the component to shut itself down.
+
+OUTPUT
+        $VAR1 = {
+            'result' => {
+                'div' => '6',
+                'a' => '15',
+                'span' => '8'
+            },
+            'result_readable' => '15 a, 6 div and 8 span',
+            'what' => [
+                'div',
+                'a',
+                'span'
+            ],
+            'type' => 'tag',
+            'where' => 'http://zoffix.com/',
+        };
+
+    The event handler set up to handle the event which you've specified in
+    the "event" argument to "count()" method/event will recieve input in the
+    $_[ARG0] in a form of a hashref. The possible keys/value of that hashref
+    are as follows:
+
+  "result"
+        {
+            'result' => {
+                'div' => '6',
+                'a' => '15',
+                'span' => '8'
+            },
+        }
+
+    Unless an error occured the "result" key will be present and its value
+    will be a hashref that is the same as the return value of "count()"
+    method in WWW::HTMLTagAttributeCounter. See WWW::HTMLTagAttributeCounter
+    "count()" method documentation for explanation of keys and values.
+
+   "result_readable"
+        { 'result_readable' => '15 a, 6 div and 8 span', }
+
+    Unless an error occured the "result_readable" will be present. The value
+    will be the return of WWW::HTMLTagAttributeCounter's "result_readable()"
+    method. See WWW::HTMLTagAttributeCounter "result_readable()" method
+    documentation for explanation.
+
+   "what", "type" and "where"
+        {
+            'what' => [
+                'div',
+                'a',
+                'span'
+            ],
+            'type' => 'tag',
+            'where' => 'http://zoffix.com/',
+        }
+
+    The "what", "type" and "where" keys will contain whatever you passed to
+    the "count()" event/method as their values. If you didn't specify the
+    "type" argument, its value in the response will be its default value.
+
+  user defined
+        { '_blah' => 'foos' }
+
+    Any arguments beginning with "_" (underscore) passed into the "count()"
+    event/method will be present intact in the result.
+
+SEE ALSO
+    POE, WWW::HTMLTagAttributeCounter
+
+AUTHOR
+    'Zoffix, "<'zoffix at cpan.org'>" (<http://zoffix.com/>,
+    <http://haslayout.net/>, <http://zofdesign.com/>)
+
+BUGS
+    Please report any bugs or feature requests to
+    "bug-poe-component-www-htmltagattributecounter at rt.cpan.org", or
+    through the web interface at
+    <http://rt.cpan.org/NoAuth/ReportBug.html?Queue=POE-Component-WWW-HTMLTa
+    gAttributeCounter>. I will be notified, and then you'll automatically be
+    notified of progress on your bug as I make changes.
+
+SUPPORT
+    You can find documentation for this module with the perldoc command.
+
+        perldoc POE::Component::WWW::HTMLTagAttributeCounter
+
+    You can also look for information at:
+
+    *   RT: CPAN's request tracker
+
+        <http://rt.cpan.org/NoAuth/Bugs.html?Dist=POE-Component-WWW-HTMLTagA
+        ttributeCounter>
+
+    *   AnnoCPAN: Annotated CPAN documentation
+
+        <http://annocpan.org/dist/POE-Component-WWW-HTMLTagAttributeCounter>
+
+    *   CPAN Ratings
+
+        <http://cpanratings.perl.org/d/POE-Component-WWW-HTMLTagAttributeCou
+        nter>
+
+    *   Search CPAN
+
+        <http://search.cpan.org/dist/POE-Component-WWW-HTMLTagAttributeCount
+        er>
+
+COPYRIGHT & LICENSE
+    Copyright 2008 'Zoffix, all rights reserved.
+
+    This program is free software; you can redistribute it and/or modify it
+    under the same terms as Perl itself.
 

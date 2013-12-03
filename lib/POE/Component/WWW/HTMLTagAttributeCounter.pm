@@ -3,7 +3,7 @@ package POE::Component::WWW::HTMLTagAttributeCounter;
 use warnings;
 use strict;
 
-our $VERSION = '0.0101';
+our $VERSION = '0.0102';
 
 use POE;
 use base 'POE::Component::NonBlockingWrapper::Base';
@@ -40,6 +40,8 @@ sub _process_request {
 
 1;
 __END__
+
+=encoding utf8
 
 =head1 NAME
 
